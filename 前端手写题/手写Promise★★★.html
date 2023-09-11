@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <script>
+      // 用new Symbol() 会报错：Uncaught TypeError: Symbol is not a constructor
+      const PENDING = Symbol('PENDING')
+      const FULFILLED = Symbol('FULFILLED')
+      const REJECTED = Symbol('REJECTED')
+
+      console.log(FULFILLED==REJECTED);
+
+      const MyPromise = function (fn) {
+        this.state = PENDING
+        this.value = ''
+
+        const resolve = (value) => {
+          this.state = FULFILLED
+          this.value = value
+        }
+
+        const reject = (value) => {
+          this.state = REJECTED
+          this.value = value
+        }
+
+        this.then = (onFulFill, onReject) => {
+          if ((this.state == FULFILLED)) {
+            onFulFill(this.value)
+          } else {
+            onReject(this.value)
+          }
+        }
+
+        try {
+          fn(resolve, reject)
+        } catch (error) {
+          reject(error)
+        }
+      }
+
+      // test
+      let p = new MyPromise((resolve, reject) => {
+        resolve('hello promise')
+      })
+      p.then((res) => {
+        console.log(res)
+      })
+    </script>
+  </body>
+</html>
