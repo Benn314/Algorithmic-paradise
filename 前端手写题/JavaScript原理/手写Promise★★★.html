@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <script>
+      // 不能用new创建Symbol对象 会报错：Uncaught TypeError: Symbol is not a constructor
+      const PENDING = Symbol('PENDING')
+      const FULFILLED = Symbol('FULFILLED')
+      const REJECTED = Symbol('REJECTED')
+
+      console.log(FULFILLED == REJECTED)
+
+      const MyPromise = function (fn) {
+        this.state = PENDING
+        this.value = ''
+
+        const resolve = (value) => {
+          this.state = FULFILLED
+          this.value = value
+        }
+
+        const reject = (value) => {
+          this.state = REJECTED
+          this.value = value
+        }
+
+        this.then = (onFulFill, onReject) => {
+          if (this.state == FULFILLED) {
+            onFulFill(this.value)
+          } else {
+            onReject(this.value)
+          }
+        }
+
+        try {
+          fn(resolve, reject)
+        } catch (error) {
+          reject(error)
+        }
+      }
+
+      // test
+      let p = new MyPromise((resolve, reject) => {
+        resolve('hello promise')
+      })
+      p.then((res) => {
+        console.log(res)
+      })
+    </script>
+
+    <!-- 要手写一个简单的Promise，你可以创建一个符合Promise/A+规范的Promise实现。下面是一个基本的示例： -->
+    <script>
+      // ChatGPT
+      class CustomPromise {
+        constructor(executor) {
+          this.state = 'pending'
+          this.value = undefined
+          this.reason = undefined
+          this.onFulfilledCallbacks = []
+          this.onRejectedCallbacks = []
+
+          const resolve = (value) => {
+            if (this.state === 'pending') {
+              this.state = 'fulfilled'
+              this.value = value
+              this.onFulfilledCallbacks.forEach((callback) =>
+                callback(this.value)
+              )
+            }
+          }
+
+          const reject = (reason) => {
+            if (this.state === 'pending') {
+              this.state = 'rejected'
+              this.reason = reason
+              this.onRejectedCallbacks.forEach((callback) =>
+                callback(this.reason)
+              )
+            }
+          }
+
+          try {
+            executor(resolve, reject)
+          } catch (error) {
+            reject(error)
+          }
+        }
+
+        then(onFulfilled, onRejected) {
+          onFulfilled =
+            typeof onFulfilled === 'function' ? onFulfilled : (value) => value
+          onRejected =
+            typeof onRejected === 'function'
+              ? onRejected
+              : (reason) => {
+                  throw reason
+                }
+
+          const promise2 = new CustomPromise((resolve, reject) => {
+            if (this.state === 'fulfilled') {
+              setTimeout(() => {
+                try {
+                  const result = onFulfilled(this.value)
+                  resolvePromise(promise2, result, resolve, reject)
+                } catch (error) {
+                  reject(error)
+                }
+              }, 0)
+            }
+
+            if (this.state === 'rejected') {
+              setTimeout(() => {
+                try {
+                  const result = onRejected(this.reason)
+                  resolvePromise(promise2, result, resolve, reject)
+                } catch (error) {
+                  reject(error)
+                }
+              }, 0)
+            }
+
+            if (this.state === 'pending') {
+              this.onFulfilledCallbacks.push(() => {
+                setTimeout(() => {
+                  try {
+                    const result = onFulfilled(this.value)
+                    resolvePromise(promise2, result, resolve, reject)
+                  } catch (error) {
+                    reject(error)
+                  }
+                }, 0)
+              })
+
+              this.onRejectedCallbacks.push(() => {
+                setTimeout(() => {
+                  try {
+                    const result = onRejected(this.reason)
+                    resolvePromise(promise2, result, resolve, reject)
+                  } catch (error) {
+                    reject(error)
+                  }
+                }, 0)
+              })
+            }
+          })
+
+          return promise2
+        }
+
+        catch(onRejected) {
+          return this.then(null, onRejected)
+        }
+
+        static resolve(value) {
+          return new CustomPromise((resolve) => {
+            resolve(value)
+          })
+        }
+
+        static reject(reason) {
+          return new CustomPromise((_, reject) => {
+            reject(reason)
+          })
+        }
+      }
+
+      function resolvePromise(promise, result, resolve, reject) {
+        if (promise === result) {
+          return reject(new TypeError('Chaining cycle detected for promise'))
+        }
+
+        if (result instanceof CustomPromise) {
+          result.then(
+            (value) => resolve(value),
+            (reason) => reject(reason)
+          )
+        } else {
+          resolve(result)
+        }
+      }
+
+      // 使用示例
+      const promise = new CustomPromise((resolve, reject) => {
+        // 异步操作
+        setTimeout(() => {
+          resolve('成功')
+          // 或者：reject('失败');
+        }, 1000)
+      })
+
+      promise
+        .then((value) => {
+          console.log('成功:', value)
+          return '新的值'
+        })
+        .then((value) => {
+          console.log('新的值:', value)
+        })
+        .catch((reason) => {
+          console.error('失败:', reason)
+        })
+    </script>
+    <!-- 这个示例实现了一个基本的Promise，
+      包括Promise的状态管理、then方法、catch方法以及静态的resolve和reject方法。
+      请注意，这只是一个简单的示例，实际的Promise实现可能需要更多的功能和错误处理。
+      同时，这个示例也不支持Promise的异步执行，实际的Promise需要更复杂的异步处理机制。 
+    -->
+  </body>
+</html>
